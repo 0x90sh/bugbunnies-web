@@ -1,0 +1,1179 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>BugBunnies</title>
+    <link rel="icon" type="image/png" href="/bugbunnies_icon_green.png" />
+    <style>
+        :root {
+            --primary: #3cff46;
+            --primary-dark: #3c9643;
+            --secondary: #12991c;
+            --background: #050505;
+            --terminal-bg: #0c0c0c;
+            --text: #f0f0f0;
+            --accent: #33ff99;
+            --grid-color: rgba(80, 80, 80, 0.1);
+            --error: #ff3333;
+            --success: #33ff99;
+            --warning: #ffcc00;
+            --info: #3cff46;
+            --prompt-color: #c13cff;
+            --username-color: #33ff99;
+            --hostname-color: #ff3c9d;
+            --command-color: #f0f0f0;
+            --output-color: #aaaaaa;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Courier New', monospace;
+        }
+		html, body, * {
+			cursor: none !important;
+		}
+        body {
+            background-color: var(--background);
+            color: var(--text);
+            height: 100vh;
+            width: 100vw;
+            overflow: hidden;
+            position: relative;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+
+        .cursor {
+            position: fixed;
+            width: 20px;
+            height: 20px;
+            border-radius: 50%;
+            background-color: transparent;
+            border: 2px solid var(--accent);
+            pointer-events: none;
+            transform: translate(-50%, -50%);
+            z-index: 9999;
+            transition: transform 0.1s, width 0.2s, height 0.2s, background-color 0.2s;
+        }
+
+        .cursor-dot {
+            position: fixed;
+            width: 5px;
+            height: 5px;
+            border-radius: 50%;
+            background-color: var(--primary);
+            pointer-events: none;
+            transform: translate(-50%, -50%);
+            z-index: 9999;
+            transition: transform 0.1s;
+        }
+
+        .grid-background {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100vw;
+            height: 100vh;
+            background: 
+                linear-gradient(to right, var(--grid-color) 1px, transparent 1px),
+                linear-gradient(to bottom, var(--grid-color) 1px, transparent 1px);
+            background-size: 30px 30px;
+            z-index: -1;
+            opacity: 0.5;
+        }
+
+        .matrix-container {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100vw;
+            height: 100vh;
+            z-index: -2;
+            opacity: 0.15;
+            pointer-events: none;
+        }
+
+        canvas {
+            display: block;
+        }
+
+        .header {
+            margin-top: 50px;
+            text-align: center;
+            padding: 1rem;
+            z-index: 10;
+        }
+
+        .glitch-title {
+            font-size: 4rem;
+            font-weight: 900;
+            text-transform: uppercase;
+            position: relative;
+            display: inline-block;
+            color: var(--text);
+            text-shadow: 0 0 10px var(--primary-dark);
+            margin-bottom: 15px;
+        }
+
+        .glitch-title::before,
+        .glitch-title::after {
+            content: "BUGBUNNIES";
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            opacity: 0.8;
+        }
+
+        .glitch-title::before {
+            color: var(--primary);
+            animation: glitch-effect 3s infinite;
+            clip-path: polygon(0 0, 100% 0, 100% 45%, 0 45%);
+            transform: translate(-5px, -3px);
+        }
+
+        .glitch-title::after {
+            color: var(--secondary);
+            animation: glitch-effect 2s infinite;
+            clip-path: polygon(0 60%, 100% 60%, 100% 100%, 0 100%);
+            transform: translate(5px, 3px);
+        }
+
+        .terminal-container {
+            width: 85%;
+            max-width: 1000px;
+            height: 65vh;
+            margin-top: 30px;
+            background-color: var(--terminal-bg);
+            border-radius: 8px;
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+            box-shadow: 0 5px 25px rgba(0, 0, 0, 0.5);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            position: relative;
+        }
+
+        .terminal-header {
+            padding: 10px;
+            background-color: rgba(0, 0, 0, 0.3);
+            display: flex;
+            align-items: center;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+        }
+
+        .terminal-buttons {
+            display: flex;
+            gap: 6px;
+        }
+
+        .terminal-btn {
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            cursor: pointer;
+        }
+
+        .red-btn {
+            background-color: #ff5f56;
+        }
+
+        .yellow-btn {
+            background-color: #ffbd2e;
+        }
+
+        .green-btn {
+            background-color: #27c93f;
+        }
+
+        .terminal-title {
+            flex-grow: 1;
+            text-align: center;
+            font-size: 14px;
+            color: rgba(255, 255, 255, 0.7);
+        }
+
+        .terminal-body {
+            flex-grow: 1;
+            padding: 10px 15px;
+            overflow-y: auto;
+            overflow-x: hidden;
+            line-height: 1.2;
+        }
+
+        .terminal-body::-webkit-scrollbar {
+            width: 8px;
+        }
+
+        .terminal-body::-webkit-scrollbar-track {
+            background: rgba(0, 0, 0, 0.2);
+        }
+
+        .terminal-body::-webkit-scrollbar-thumb {
+            background: var(--primary-dark);
+            border-radius: 4px;
+        }
+
+        .terminal-line {
+            display: flex;
+            margin-bottom: 2px;
+            font-size: 14px;
+        }
+
+        .prompt {
+            white-space: nowrap;
+        }
+
+        .prompt-user {
+            color: var(--username-color);
+        }
+
+        .prompt-at {
+            color: var(--text);
+            margin: 0 2px;
+        }
+
+        .prompt-host {
+            color: var(--hostname-color);
+        }
+
+        .prompt-path {
+            color: var(--prompt-color);
+            margin-right: 6px;
+        }
+
+        .command {
+            color: var(--command-color);
+        }
+
+        .output {
+            color: var(--output-color);
+            white-space: pre-wrap;
+            word-wrap: break-word;
+            width: 100%;
+        }
+
+        .output.error {
+            color: var(--error);
+        }
+
+        .output.success {
+            color: var(--success);
+        }
+
+        .output.warning {
+            color: var(--warning);
+        }
+
+        .output.info {
+            color: var(--info);
+        }
+
+        .terminal-input-line {
+            display: flex;
+            align-items: center;
+            padding: 0 15px 10px 15px;
+            width: 100%;
+        }
+
+        .terminal-input-prompt {
+            white-space: nowrap;
+        }
+
+        .prompt-user-input {
+            color: var(--username-color);
+        }
+
+        .prompt-at-input {
+            color: var(--text);
+            margin: 0 2px;
+        }
+
+        .prompt-host-input {
+            color: var(--hostname-color);
+        }
+
+        .prompt-path-input {
+            color: var(--prompt-color);
+            margin-right: 6px;
+        }
+
+        .terminal-input {
+            background: transparent;
+            border: none;
+            color: var(--command-color);
+            font-family: 'Courier New', monospace;
+            font-size: 14px;
+            width: 100%;
+            outline: none;
+            caret-color: var(--accent);
+        }
+
+        .cursor-blink {
+            display: inline-block;
+            width: 8px;
+            height: 15px;
+            background-color: var(--accent);
+            animation: blink 1s infinite;
+            margin-left: 2px;
+            vertical-align: middle;
+        }
+
+        @keyframes typing {
+            to {
+                left: 100%;
+            }
+        }
+
+        @keyframes blink {
+            0%, 100% {
+                opacity: 1;
+            }
+            50% {
+                opacity: 0;
+            }
+        }
+
+        @keyframes pulse {
+            0%, 100% {
+                filter: drop-shadow(0 0 5px var(--primary));
+            }
+            50% {
+                filter: drop-shadow(0 0 15px var(--primary));
+            }
+        }
+
+        @keyframes fadeIn {
+            to {
+                opacity: 1;
+            }
+        }
+
+        @keyframes glitch-effect {
+            0% {
+                transform: translate(-5px, -3px);
+            }
+            20% {
+                transform: translate(5px, 3px);
+            }
+            40% {
+                transform: translate(-5px, 3px);
+            }
+            60% {
+                transform: translate(5px, -3px);
+            }
+            80% {
+                transform: translate(-3px, 5px);
+            }
+            100% {
+                transform: translate(3px, -5px);
+            }
+        }
+
+        .hidden {
+            display: none;
+        }
+
+        .content-header {
+            color: var(--accent);
+            margin-bottom: 6px;
+            font-size: 16px;
+            font-weight: bold;
+        }
+
+        .content-subheader {
+            color: var(--secondary);
+            margin: 4px 0;
+            font-size: 14px;
+        }
+
+        .content-list {
+            margin-left: 20px;
+            margin-bottom: 6px;
+        }
+
+        .content-list-item {
+            margin-bottom: 2px;
+        }
+
+        .content-paragraph {
+            margin-bottom: 6px;
+            line-height: 1.3;
+        }
+
+        .content-table {
+            border-collapse: collapse;
+            width: 100%;
+            margin: 8px 0;
+        }
+
+        .content-table th {
+            text-align: left;
+            padding: 4px 8px;
+            background-color: rgba(0, 0, 0, 0.3);
+            color: var(--accent);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .content-table td {
+            padding: 3px 8px;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .content-table tr:nth-child(even) {
+            background-color: rgba(255, 255, 255, 0.03);
+        }
+
+        .help-command {
+            color: var(--success);
+            width: 150px;
+            display: inline-block;
+        }
+
+        .help-description {
+            color: var(--text);
+        }
+
+        .minimized {
+            height: 40px !important;
+            overflow: hidden;
+        }
+    </style>
+</head>
+<body>
+    <div class="cursor"></div>
+    <div class="cursor-dot"></div>
+    <div class="grid-background"></div>
+    <div class="matrix-container">
+        <canvas id="matrix"></canvas>
+    </div>
+
+    <div class="header">
+        <h1 class="glitch-title">BUGBUNNIES</h1>
+    </div>
+
+    <div class="terminal-container">
+        <div class="terminal-header">
+            <div class="terminal-buttons">
+                <div class="terminal-btn red-btn"></div>
+                <div class="terminal-btn yellow-btn"></div>
+                <div class="terminal-btn green-btn"></div>
+            </div>
+            <div class="terminal-title">bugbunnies@kali:~</div>
+        </div>
+        <div class="terminal-body" id="terminal-body">
+            <div class="terminal-line">
+                <span class="output info">
+ ______             ______                   _           
+ | ___ \            | ___ \                 (_)          
+ | |_/ /_   _  __ _ | |_/ /_   _ _ __  _ __  _  ___  ___ 
+ | ___ \ | | |/ _` || ___ \ | | | '_ \| '_ \| |/ _ \/ __|
+ | |_/ / |_| | (_| || |_/ / |_| | | | | | | | |  __/\__ \
+ \____/ \__,_|\__, |\____/ \__,_|_| |_|_| |_|_|\___||___/
+               __/ |                                      
+              |___/                                       
+                </span>
+            </div>
+            <div class="terminal-line">
+                <span class="output">Welcome to BugBunnies Terminal Interface v1.0</span>
+            </div>
+            <div class="terminal-line">
+                <span class="output">Finding bugs, multiplying solutions</span>
+            </div>
+            <div class="terminal-line">
+                <span class="output">Type <span class="success">'help'</span> to see available commands.</span>
+            </div>
+            <div class="terminal-line">
+                <span class="output">-------------------------------------------------</span>
+            </div>
+        </div>
+        <div class="terminal-input-line">
+            <span class="terminal-input-prompt" id="current-prompt"><span class="prompt-user-input">bugbunnies</span><span class="prompt-at-input">@</span><span class="prompt-host-input">kali</span><span class="prompt-path-input">:~$</span></span>
+            <input type="text" class="terminal-input" id="terminal-input" spellcheck="false">
+        </div>
+    </div>
+
+    <script>
+		const baseTitle = "BugBunnies";
+		const hopper = "🐇";
+		const bunnyEnd = "🐰";
+		let position = baseTitle.length;
+		let direction = -1;
+		let pause = false;
+
+		function updateTitle() {
+			let title;
+
+			// Show 🐰
+			if (pause) {
+				title = (direction === -1) ? bunnyEnd + baseTitle : baseTitle + bunnyEnd;
+				document.title = title;
+
+				direction *= -1;
+				position += direction;
+				pause = false;
+
+				setTimeout(updateTitle, 700);
+				return;
+			}
+
+			// Hopping animation with 🐇
+			const left = baseTitle.slice(0, position);
+			const right = baseTitle.slice(position);
+			title = left + hopper + right;
+			document.title = title;
+
+			position += direction;
+
+			if (position < 0 || position > baseTitle.length) {
+				pause = true;
+			}
+
+			setTimeout(updateTitle, 200);
+		}
+
+		updateTitle();
+
+        const fileSystem = {
+            '/': {
+                type: 'directory',
+                name: '/',
+                children: ['home', 'etc', 'bin']
+            },
+            '/home': {
+                type: 'directory',
+                name: 'home',
+                children: ['bugbunnies']
+            },
+            '/home/bugbunnies': {
+                type: 'directory',
+                name: 'bugbunnies',
+                children: ['team', 'events', 'README.txt']
+            },
+            '/home/bugbunnies/README.txt': {
+                type: 'file',
+                name: 'README.txt',
+                content: `Welcome to the BugBunnies Terminal Interface!
+
+This interface allows you to navigate through our team information using Linux-like commands.
+Basic navigation commands:
+- ls: List directory contents
+- cd: Change directory
+- cat: Display file contents
+- pwd: Print working directory
+- help: Show all available commands
+
+Explore our directories to learn more about our team, events, achievements, and challenges.
+Happy hacking!
+
+-- The BugBunnies Team`
+            },
+            '/home/bugbunnies/team': {
+                type: 'directory',
+                name: 'team',
+                children: ['members.txt', 'about.txt', 'join.txt']
+            },
+            '/home/bugbunnies/team/members.txt': {
+                type: 'file',
+                name: 'members.txt',
+                content: `# BugBunnies Team Members
+
+## Members
+- 0x90 [Captain]
+  Pwns, breaks but also talks too much.
+
+- w1zardess
+  Her magic spells have yet broken any auth system thrown at her.
+
+- umeK
+  The brightest of em all, completed PWNY sqli training labs twice.
+
+- Mythic
+  Is at the top of almost any leaderboard in existance, thats why i mentioned him here at last. #totallymybad`
+            },
+            '/home/bugbunnies/team/about.txt': {
+                type: 'file',
+                name: 'about.txt',
+                content: `# About BugBunnies
+
+BugBunnies is an elite team of cybersecurity experts specializing in Capture The Flag (CTF) competitions. Our name combines the concepts of software bugs and the cunning nature of bunnies - we multiply solutions as fast as we find vulnerabilities.
+
+Founded in 2025 by a group of passionate security researchers, we've quickly established ourselves as formidable competitors in the global CTF scene. (or wish atleast LOL) Our team brings together diverse expertise across reverse engineering, cryptography, web exploitation, forensics, and binary exploitation.
+
+## Our Philosophy
+
+We don't just play to win - we hack to learn, share knowledge, and advance the field of cybersecurity. Whether we're breaking into systems or defending them, our innovative approaches and technical prowess set us apart.
+
+## Core Values
+
+1. Knowledge Sharing - We believe in openly sharing techniques and solutions after competitions
+2. Continuous Learning - Technology evolves, and so do we
+3. Ethical Conduct - We apply our skills ethically and responsibly
+4. Community Support - We actively mentor new CTF players and contribute to the security community
+5. Technical Excellence - We strive for elegant solutions and deep understanding
+
+## Contact
+
+- Discord: 0x90.sh`
+            },
+            '/home/bugbunnies/team/join.txt': {
+                type: 'file',
+                name: 'join.txt',
+                content: `# Join BugBunnies
+
+We're always looking for talented hackers and security enthusiasts to join our team. If you're passionate about cybersecurity and enjoy solving complex technical challenges, we want to hear from you!
+
+## Requirements
+
+- be good
+- be patient
+- be chill
+- be competitive
+
+If you're interested, reach out to our captain on Discord -> 0x90.sh`
+            },
+            '/home/bugbunnies/events': {
+                type: 'directory',
+                name: 'events',
+                children: ['participations.txt']
+            },
+            '/home/bugbunnies/events/participations.txt': {
+                type: 'file',
+                name: 'participations.txt',
+                content: `# Upcoming CTF Events
+
+## Plaid CTF 2025
+- Type: Jeopardy
+- Date: April 4: Online, plaidctf.com
+- Status: No qualification required
+- Team Registered: Yes
+- Notes: Our main target is having fun.
+
+`
+            },
+            '/home/bugbunnies/pwny': {
+                type: 'directory',
+                name: 'resources',
+                children: ['pwny.txt']
+            },
+            '/home/bugbunnies/resources/pwny.txt': {
+                type: 'file',
+                name: 'pwny.txt',
+                content: `# PWNY
+                Visit pwny.ch for an incredible infosec learning experience!!
+                `
+            },
+            '/etc': {
+                type: 'directory',
+                name: 'etc',
+                children: ['motd']
+            },
+            '/etc/motd': {
+                type: 'file',
+                name: 'motd',
+                content: `
+ ______             ______                   _           
+ | ___ \\            | ___ \\                 (_)          
+ | |_/ /_   _  __ _ | |_/ /_   _ _ __  _ __  _  ___  ___ 
+ | ___ \\ | | |/ _\` || ___ \\ | | | '_ \\| '_ \\| |/ _ \\/ __|
+ | |_/ / |_| | (_| || |_/ / |_| | | | | | | | |  __/\\__ \\
+ \\____/ \\__,_|\\__, |\\____/ \\__,_|_| |_|_| |_|_|\\___||___/
+               __/ |                                      
+              |___/                                       
+
+Welcome to BugBunnies Terminal Interface v1.0
+Finding bugs, multiplying solutions
+
+Type 'help' to see available commands.
+`
+            },
+            '/bin': {
+                type: 'directory',
+                name: 'bin',
+                children: ['ls', 'cd', 'cat', 'pwd', 'help']
+            }
+        };
+
+        let currentPath = '/home/bugbunnies';
+        let commandHistory = [];
+        let historyIndex = -1;
+
+        const terminalBody = document.getElementById('terminal-body');
+        const terminalInput = document.getElementById('terminal-input');
+        const currentPrompt = document.getElementById('current-prompt');
+
+        const commands = {
+            help: function() {
+                return `
+<span class="content-header">Available Commands:</span>
+
+<span class="help-command">ls [directory]</span> <span class="help-description">List directory contents</span>
+<span class="help-command">cd [directory]</span> <span class="help-description">Change current directory</span>
+<span class="help-command">cat [file]</span> <span class="help-description">Display file contents</span>
+<span class="help-command">pwd</span> <span class="help-description">Print working directory</span>
+<span class="help-command">clear</span> <span class="help-description">Clear terminal screen</span>
+<span class="help-command">whoami</span> <span class="help-description">Display current user</span>
+<span class="help-command">date</span> <span class="help-description">Display current date and time</span>
+<span class="help-command">history</span> <span class="help-description">Display command history</span>
+<span class="help-command">echo [text]</span> <span class="help-description">Display text</span>
+<span class="help-command">find [pattern]</span> <span class="help-description">Find files by name</span>
+<span class="help-command">help</span> <span class="help-description">Display this help message</span>
+`;
+            },
+            
+            ls: function(args) {
+                const targetPath = args.length > 0 ? resolvePath(args[0]) : currentPath;
+                const node = getNodeByPath(targetPath);
+                
+                if (!node) {
+                    return `<span class="error">ls: cannot access '${args[0]}': No such file or directory</span>`;
+                }
+                
+                if (node.type !== 'directory') {
+                    return node.name;
+                }
+                
+                let output = '';
+                for (const child of node.children) {
+                    const childNode = getNodeByPath(`${targetPath}/${child}`);
+                    if (childNode && childNode.type === 'directory') {
+                        output += `<span class="info">${child}/</span>    `;
+                    } else {
+                        output += `${child}    `;
+                    }
+                }
+                
+                return output;
+            },
+            
+            cd: function(args) {
+                if (args.length === 0 || args[0] === '~') {
+                    currentPath = '/home/bugbunnies';
+                    updatePrompt();
+                    return '';
+                }
+                
+                const targetPath = resolvePath(args[0]);
+                const node = getNodeByPath(targetPath);
+                
+                if (!node) {
+                    return `<span class="error">cd: no such directory: ${args[0]}</span>`;
+                }
+                
+                if (node.type !== 'directory') {
+                    return `<span class="error">cd: not a directory: ${args[0]}</span>`;
+                }
+                
+                currentPath = targetPath;
+                updatePrompt();
+                return '';
+            },
+            
+            cat: function(args) {
+                if (args.length === 0) {
+                    return `<span class="error">cat: missing file operand</span>`;
+                }
+                
+                const targetPath = resolvePath(args[0]);
+                const node = getNodeByPath(targetPath);
+                
+                if (!node) {
+                    return `<span class="error">cat: ${args[0]}: No such file or directory</span>`;
+                }
+                
+                if (node.type !== 'file') {
+                    return `<span class="error">cat: ${args[0]}: Is a directory</span>`;
+                }
+                
+                return node.content;
+            },
+            
+            pwd: function() {
+                return currentPath;
+            },
+            
+            clear: function() {
+                return 'CLEAR_TERMINAL';
+            },
+            
+            whoami: function() {
+                return 'bugbunnies';
+            },
+            
+            date: function() {
+                return new Date().toString();
+            },
+            
+            history: function() {
+                if (commandHistory.length === 0) {
+                    return '<span class="warning">No commands in history</span>';
+                }
+                
+                let output = '';
+                for (let i = 0; i < commandHistory.length; i++) {
+                    output += `<span class="success">${i + 1}</span>  ${commandHistory[i]}\n`;
+                }
+                
+                return output;
+            },
+            
+            echo: function(args) {
+                return args.join(' ');
+            },
+            
+            find: function(args) {
+                if (args.length === 0) {
+                    return `<span class="error">find: missing pattern</span>`;
+                }
+                
+                const pattern = args[0].toLowerCase();
+                const results = findFiles(currentPath, pattern);
+                
+                if (results.length === 0) {
+                    return `<span class="warning">No files matching '${pattern}' found</span>`;
+                }
+                
+                return results.join('\n');
+            }
+        };
+
+        terminalInput.addEventListener('keydown', handleKeyDown);
+        terminalInput.focus();
+
+        function updatePrompt() {
+            let displayPath = currentPath;
+            if (currentPath.startsWith('/home/bugbunnies')) {
+                displayPath = currentPath.replace('/home/bugbunnies', '~');
+            }
+            
+            currentPrompt.innerHTML = `<span class="prompt-user-input">bugbunnies</span><span class="prompt-at-input">@</span><span class="prompt-host-input">kali</span><span class="prompt-path-input">:${displayPath}$</span>`;
+        }
+
+        function handleKeyDown(event) {
+            if (event.key === 'Enter') {
+                event.preventDefault();
+                const command = terminalInput.value.trim();
+                
+                addCommand(command);
+                
+                if (command !== '') {
+                    commandHistory.push(command);
+                    historyIndex = commandHistory.length;
+                    processCommand(command);
+                } else {
+                    addOutput('');
+                }
+                terminalInput.value = '';
+            } else if (event.key === 'ArrowUp') {
+                event.preventDefault();
+                navigateHistory(-1);
+            } else if (event.key === 'ArrowDown') {
+                event.preventDefault();
+                navigateHistory(1);
+            } else if (event.key === 'Tab') {
+                event.preventDefault();
+                autocomplete();
+            }
+        }
+        function navigateHistory(direction) {
+            if (commandHistory.length === 0) return;
+            
+            historyIndex += direction;
+            
+            if (historyIndex < 0) {
+                historyIndex = 0;
+            } else if (historyIndex > commandHistory.length) {
+                historyIndex = commandHistory.length;
+                terminalInput.value = '';
+                return;
+            }
+            
+            if (historyIndex === commandHistory.length) {
+                terminalInput.value = '';
+            } else {
+                terminalInput.value = commandHistory[historyIndex];
+            }
+            
+            setTimeout(() => {
+                terminalInput.selectionStart = terminalInput.value.length;
+                terminalInput.selectionEnd = terminalInput.value.length;
+            }, 0);
+        }
+
+        function addCommand(command) {
+            const line = document.createElement('div');
+            line.className = 'terminal-line';
+            
+            const promptSpan = document.createElement('span');
+            promptSpan.className = 'prompt';
+            promptSpan.innerHTML = currentPrompt.innerHTML;
+            
+            const commandSpan = document.createElement('span');
+            commandSpan.className = 'command';
+            commandSpan.textContent = command;
+            
+            line.appendChild(promptSpan);
+            line.appendChild(commandSpan);
+            terminalBody.appendChild(line);
+
+            terminalBody.scrollTop = terminalBody.scrollHeight;
+        }
+
+        function addOutput(output) {
+            if (output === 'CLEAR_TERMINAL') {
+                while (terminalBody.firstChild) {
+                    terminalBody.removeChild(terminalBody.firstChild);
+                }
+                return;
+            }
+            
+            const line = document.createElement('div');
+            line.className = 'terminal-line';
+            
+            const outputSpan = document.createElement('span');
+            outputSpan.className = 'output';
+            outputSpan.innerHTML = output;
+            
+            line.appendChild(outputSpan);
+            terminalBody.appendChild(line);
+
+            terminalBody.scrollTop = terminalBody.scrollHeight;
+        }
+
+        function processCommand(command) {
+            const parts = command.split(' ');
+            const cmd = parts[0].toLowerCase();
+            const args = parts.slice(1);
+            
+            if (cmd in commands) {
+                const output = commands[cmd](args);
+                addOutput(output);
+            } else {
+                addOutput(`<span class="error">${cmd}: command not found</span>`);
+                if (cmd === 'nano' || cmd === 'vim' || cmd === 'emacs' || cmd === 'vi') {
+                    addOutput(`<span class="warning">Text editors are not installed on this system.</span>`);
+                    addOutput(`<span class="warning">Use 'cat' to view files.</span>`);
+                } else if (cmd === 'sudo') {
+                    addOutput(`<span class="error">bugbunnies is not in the sudoers file. This incident will be reported.</span>`);
+                }
+            }
+        }
+
+        function resolvePath(path) {
+            if (!path) return currentPath;
+
+            if (path.startsWith('/')) {
+                return path;
+            }
+
+            if (path === '~') {
+                return '/home/bugbunnies';
+            }
+            
+            if (path.startsWith('~/')) {
+                return '/home/bugbunnies/' + path.substring(2);
+            }
+
+            let result = currentPath;
+            
+            const parts = path.split('/');
+            for (const part of parts) {
+                if (part === '' || part === '.') {
+                } else if (part === '..') {
+                    const lastSlashIndex = result.lastIndexOf('/');
+                    if (lastSlashIndex > 0) {
+                        result = result.substring(0, lastSlashIndex);
+                    }
+                } else {
+                    result += `/${part}`;
+                }
+            }
+            
+            return result;
+        }
+
+        function getNodeByPath(path) {
+            if (path === '/') return fileSystem['/'];
+
+            if (path.endsWith('/') && path !== '/') {
+                path = path.slice(0, -1);
+            }
+            
+            return fileSystem[path];
+        }
+
+        function autocomplete() {
+            const input = terminalInput.value;
+            const lastSpace = input.lastIndexOf(' ');
+            const prefix = lastSpace === -1 ? '' : input.substring(0, lastSpace + 1);
+            const partialPath = lastSpace === -1 ? input : input.substring(lastSpace + 1);
+            
+            if (partialPath === '') return;
+
+            let dirPath, partialName;
+            const lastSlashIndex = partialPath.lastIndexOf('/');
+            
+            if (lastSlashIndex === -1) {
+                dirPath = currentPath;
+                partialName = partialPath;
+            } else {
+                const dirPathRelative = partialPath.substring(0, lastSlashIndex);
+                dirPath = resolvePath(dirPathRelative);
+                partialName = partialPath.substring(lastSlashIndex + 1);
+            }
+            
+            const node = getNodeByPath(dirPath);
+            if (!node || node.type !== 'directory') return;
+
+            const matches = node.children.filter(child => 
+                child.toLowerCase().startsWith(partialName.toLowerCase())
+            );
+            
+            if (matches.length === 1) {
+                const match = matches[0];
+                const matchNode = getNodeByPath(`${dirPath}/${match}`);
+                const suffix = matchNode.type === 'directory' ? '/' : '';
+                
+                if (lastSlashIndex === -1) {
+                    terminalInput.value = prefix + match + suffix;
+                } else {
+                    terminalInput.value = prefix + partialPath.substring(0, lastSlashIndex + 1) + match + suffix;
+                }
+            }
+        }
+
+        function findFiles(startPath, pattern) {
+            const results = [];
+            
+            function search(path) {
+                const node = getNodeByPath(path);
+                if (!node) return;
+                
+                if (node.type === 'file' && node.name.toLowerCase().includes(pattern)) {
+                    results.push(path);
+                } else if (node.type === 'directory') {
+                    for (const child of node.children) {
+                        search(`${path}/${child}`);
+                    }
+                }
+            }
+            
+            search(startPath);
+            return results;
+        }
+
+        const canvas = document.getElementById('matrix');
+        const ctx = canvas.getContext('2d');
+
+        canvas.width = window.innerWidth;
+        canvas.height = window.innerHeight;
+
+        const characters = 'アァカサタナハマヤャラワガザダバパイィキシチニヒミリヰギジヂビピウゥクスツヌフムユュルグズブヅプエェケセテネヘメレヱゲゼデベペオォコソトノホモヨョロヲゴゾドボポヴッン0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz';
+        const fontSize = 14;
+        const columns = canvas.width / fontSize;
+
+        const drops = [];
+        for (let i = 0; i < columns; i++) {
+            drops[i] = Math.floor(Math.random() * canvas.height / fontSize);
+        }
+
+        function draw() {
+            ctx.fillStyle = 'rgba(0, 0, 0, 0.05)';
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+            ctx.font = fontSize + 'px monospace';
+
+            for (let i = 0; i < drops.length; i++) {
+                const text = characters.charAt(Math.floor(Math.random() * characters.length));
+                ctx.fillStyle = i % 2 === 0 ? '#c13cff' : '#33ff99';
+                ctx.fillText(text, i * fontSize, drops[i] * fontSize);
+
+                if (drops[i] * fontSize > canvas.height && Math.random() > 0.975) {
+                    drops[i] = 0;
+                }
+
+                drops[i]++;
+            }
+
+            requestAnimationFrame(draw);
+        }
+
+        const cursor = document.querySelector('.cursor');
+        const cursorDot = document.querySelector('.cursor-dot');
+
+        document.addEventListener('mousemove', (e) => {
+            cursor.style.left = e.clientX + 'px';
+            cursor.style.top = e.clientY + 'px';
+            
+            cursorDot.style.left = e.clientX + 'px';
+            cursorDot.style.top = e.clientY + 'px';
+        });
+
+        document.addEventListener('mousedown', () => {
+            cursor.style.width = '15px';
+            cursor.style.height = '15px';
+            cursor.style.backgroundColor = 'rgba(51, 255, 153, 0.2)';
+        });
+
+        document.addEventListener('mouseup', () => {
+            cursor.style.width = '20px';
+            cursor.style.height = '20px';
+            cursor.style.backgroundColor = 'transparent';
+        });
+
+        document.querySelector('.red-btn').addEventListener('click', () => {
+            window.location.reload();
+        });
+
+        document.querySelector('.yellow-btn').addEventListener('click', () => {
+            const terminalContainer = document.querySelector('.terminal-container');
+            terminalContainer.classList.toggle('minimized');
+        });
+
+        document.querySelector('.green-btn').addEventListener('click', () => {
+            const terminalContainer = document.querySelector('.terminal-container');
+            terminalContainer.style.width = terminalContainer.style.width === '100%' ? '85%' : '100%';
+            terminalContainer.style.height = terminalContainer.style.height === '90vh' ? '65vh' : '90vh';
+        });
+
+        window.addEventListener('load', () => {
+            requestAnimationFrame(draw);
+            terminalInput.focus();
+            updatePrompt();
+        });
+
+        document.querySelector('.terminal-container').addEventListener('click', () => {
+            terminalInput.focus();
+        });
+
+        window.addEventListener('resize', () => {
+            canvas.width = window.innerWidth;
+            canvas.height = window.innerHeight;
+        });
+        const asciiArt = `
+        ______             ______                   _                   
+        | ___ \\            | ___ \\                 (_)                  
+        | |_/ /_   _  __ _ | |_/ /_   _ _ __  _ __  _  ___  ___         
+        | ___ \\ | | |/ _\` || ___ \\ | | | '_ \\| '_ \\| |/ _ \\/ __|        
+        | |_/ / |_| | (_| || |_/ / |_| | | | | | | | |  __/\\__ \\        
+        \\____/ \\__,_|\\__, ||____/ \\__,_|_| |_|_| |_|_|\\___||___/        
+                      __/ |                                             
+                      |___/                                             `;
+
+        console.log(
+        `%c${asciiArt}`,
+        "color: #33ff99; font-weight: bold; background: #050505; font-family: monospace;"
+        );
+
+        console.log(
+        "%cWelcome to %cBugBunnies %c 🐇🐇🐇🐇🐇",
+        "color: #33ff99; font-weight: bold;",
+        "color: #c13cff; font-weight: bold;",
+        "color: #33ff99;"
+        );
+    </script>
